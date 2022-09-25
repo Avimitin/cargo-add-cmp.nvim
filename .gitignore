@@ -1,2 +1,3 @@
 /target
 /Cargo.lock
+lua/cargo_add_nvim.so

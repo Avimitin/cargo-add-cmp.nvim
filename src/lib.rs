@@ -1,8 +1,12 @@
 // TODO: Remove this after finish the code
 #![allow(unused)]
 
+use nvim_oxi::opts::CreateCommandOpts;
+use nvim_oxi::types::{CommandComplete, CommandArgs};
+use nvim_oxi::{self, Function, print};
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::os::unix::thread;
 
 #[derive(Deserialize)]
 struct ApiResponse {
@@ -73,9 +77,12 @@ impl CratesIoClient {
         let endpoint = format!("{}/api/v1/crates/{name}", self.host);
         let endpoint =
             reqwest::Url::parse(&endpoint).unwrap_or_else(|_| panic!("invalid url: {endpoint}"));
-        let resp = self.c.get(endpoint)
+        let resp = self
+            .c
+            .get(endpoint)
             .header("User-Agent", "cargo_feature_cmp_nvim")
-            .send().await?;
+            .send()
+            .await?;
         let body = resp.bytes().await?;
         let response: ApiResponse = serde_json::from_slice(&body)?;
 
@@ -107,4 +114,63 @@ async fn test_list_features() {
     assert!(!features.is_empty());
 
     println!("{features:?}")
+}
+
+#[nvim_oxi::module]
+fn cargo_add_nvim() -> nvim_oxi::Result<()> {
+    let completion = Function::from_fn(generate_completion);
+    let completion = CommandComplete::CustomList(completion);
+    let opts = CreateCommandOpts::builder()
+        .desc("Cargo add command but with completion menu")
+        .nargs(nvim_oxi::types::CommandNArgs::OneOrMore)
+        .complete(completion)
+        .bang(false)
+        .build();
+
+    let cmd = |args: CommandArgs| {
+        let arg = args.args.unwrap_or("FUCK".to_string());
+        print!("{}", arg);
+        Ok(())
+    };
+
+    // TODO: Make it actually call `cargo add`
+    nvim_oxi::api::create_user_command("CargoAdd", cmd, Some(&opts)).unwrap();
+    Ok(())
+}
+
+fn generate_completion(arguments: (String, String, usize)) -> Result<Vec<String>, nvim_oxi::Error> {
+    let (arg_lead, cmd_line, cursor_pos) = arguments;
+    // TODO: Get version completion list
+    if arg_lead.contains('@') {
+        // ...
+    }
+
+    if cmd_line.contains(" -F ") {
+        let rule =
+            regex::Regex::new(r#"CargoAdd ([\w@\.]+) -F ?([\w, ]*)"#).expect("invalid regex rule");
+        let capture = rule.captures(&cmd_line);
+        if capture.is_none() {
+            return Ok(Vec::new());
+        }
+        let capture = capture.unwrap();
+        let crate_name = &capture[1];
+
+        // TODO: Exclude writed features
+        // let current_selection = &capture[2];
+
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let features = runtime.block_on(list_features(crate_name));
+
+        // TODO: logging error to a file or...whatever, just don't mess up the :message panel
+        if let Ok(result) = features {
+            // FIXME: Maybe I should just deserialize the response into String
+            let result = result
+                .into_iter()
+                .map(|elem| elem.to_string())
+                .collect::<Vec<_>>();
+            return Ok(result);
+        }
+    }
+
+    Ok(Vec::new())
 }
