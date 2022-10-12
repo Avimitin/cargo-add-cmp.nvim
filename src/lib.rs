@@ -1,8 +1,8 @@
 // TODO: Remove this after finish the code
 #![allow(unused)]
 
-use nvim_oxi::opts::CreateCommandOpts;
-use nvim_oxi::types::{CommandComplete, CommandArgs};
+use nvim_oxi::api::opts::CreateCommandOpts;
+use nvim_oxi::api::types::{CommandComplete, CommandArgs};
 use nvim_oxi::{self, Function, print};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -122,19 +122,19 @@ fn cargo_add_nvim() -> nvim_oxi::Result<()> {
     let completion = CommandComplete::CustomList(completion);
     let opts = CreateCommandOpts::builder()
         .desc("Cargo add command but with completion menu")
-        .nargs(nvim_oxi::types::CommandNArgs::OneOrMore)
+        .nargs(nvim_oxi::api::types::CommandNArgs::OneOrMore)
         .complete(completion)
         .bang(false)
         .build();
 
     let cmd = |args: CommandArgs| {
-        let arg = args.args.unwrap_or("FUCK".to_string());
+        let arg = args.args.unwrap_or_else(|| "FUCK".to_string());
         print!("{}", arg);
         Ok(())
     };
 
     // TODO: Make it actually call `cargo add`
-    nvim_oxi::api::create_user_command("CargoAdd", cmd, Some(&opts)).unwrap();
+    nvim_oxi::api::create_user_command("CargoAdd", cmd, &opts).unwrap();
     Ok(())
 }
 

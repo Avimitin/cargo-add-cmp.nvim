@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nvim-oxi = { git = "https://github.com/noib3/nvim-oxi", features = ["nightly"]}
+nvim-oxi = { git = "https://github.com/noib3/nvim-oxi", features = ["neovim-0-8"]}
 cargo_metadata = "0.15.0"
 crates-index = "0.18.9"
 anyhow = "1.0.65"
